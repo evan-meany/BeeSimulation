@@ -7,21 +7,69 @@ static size_t s_GlobalBeeID = 0;
 
 enum BeeJob
 {
-   QUEEN, FORAGER, NURSE, HOUSE, GUARD, DRONE, NONE
+   QUEEN, CLEANER, NURSE, FOOD, HOUSE, GUARD, FORAGER, DRONE, NONE
+};
+
+static std::string BeeJobToString(const BeeJob job)
+{
+   if (job == BeeJob::QUEEN) { return "Queen"; }
+   if (job == BeeJob::CLEANER) { return "Cleaner"; }
+   if (job == BeeJob::NURSE) { return "Nurse"; }
+   if (job == BeeJob::FOOD) { return "Food"; }
+   if (job == BeeJob::HOUSE) { return "House"; }
+   if (job == BeeJob::GUARD) { return "Guard"; }
+   if (job == BeeJob::FORAGER) { return "Forager"; }
+   if (job == BeeJob::DRONE) { return "Drone"; }
+   if (job == BeeJob::NONE) { return "No job"; }
+   return "";
+}
+
+struct BeeTraits
+{
+   size_t longevity = 90;
+   double speed = 1.0;
+   double vision = 1.0;
+   size_t carryCapacity = 20;
+   double diseaseResistance = 1.0;
+};
+
+enum BeeTask
+{
+   NONE,               // No specific task, might be resting or in transition
+   EAT,                // Consuming honey/nectar for energy
+   COLLECT_POLLEN,     // Foraging task for collecting pollen
+   COLLECT_NECTAR,     // Foraging task for collecting nectar
+   FEED_LARVAE,        // Feeding the larvae, typically a nurse bee task
+   LAY_EGGS,           // Exclusive to the queen
+   CLEAN_CELL,         // Cleaning cells, usually a task for young bees
+   BUILD_COMB,         // Constructing or repairing comb structure
+   GUARD_ENTRANCE,     // Guarding the hive entrance against intruders
+   RECEIVE_NECTAR,     // Receiving nectar from foragers and storing/processing it
+   GROOM_SELF,         // Self-grooming to remove debris or parasites
+   GROOM_OTHERS,       // Grooming other bees, a form of social interaction
+   VENTILATE,          // Using wings to ventilate and regulate hive temperature
+   DANCE,              // Foragers communicate locations of food sources
+   MATE                // Exclusive to drones when they encounter a queen on her mating flight
 };
 
 struct Bee
 {
-   BeeJob job;
-   // Date birthDate;
-   size_t age;
    size_t id;
+   BeeJob job;
+   size_t age;
+   BeeTraits traits;
+   double energy = 1.0;
+   BeeTask task;
+   // Date birthDate;
 
-   Bee(const BeeJob job) : job(job), age(0)
-   {
-      // birthDate = Calendar::GetInstance().GetDate();
-      id = s_GlobalBeeID++;
-   }
+   Bee(const BeeJob job, BeeTraits traits) : 
+      id(s_GlobalBeeID++), job(job), age(0), traits(traits) {}
+   Bee(const BeeJob job) : Bee(job, BeeTraits()) {}
+};
+
+struct Hive
+{
+   size_t waxCombCells;
 };
 
 typedef std::shared_ptr<Bee> BeePtr; 
@@ -74,20 +122,17 @@ public:
 
    void SimulateDay()
    {
-      Forage();
-      Nurse();
-      House();
-      Guard();
    }
 
    void PrintColonyInfo()
    {
       std::cout << "|======== BEE COLONY INFO ========|" << std::endl;
       std::cout << std::endl;
+      std::cout << " Pollen: " << m_Pollen << std::endl;
+      std::cout << " Incubating: " << m_BeesIncubating << std::endl;
       for (const auto& [job, jobSet] : m_BeeJobSets)
       {
-         std::cout << " Job: " << job << std::endl;
-         std::cout << " Size: " << jobSet.size() << std::endl;
+         std::cout << " " << BeeJobToString(job) << ": " << jobSet.size() << std::endl;
       }
       std::cout << std::endl;
       std::cout << "|=================================|" << std::endl;
@@ -98,7 +143,6 @@ private:
    std::unordered_map<BeeJob, std::unordered_set<BeePtr>> m_BeeJobSets;
    size_t m_Pollen = 0;
    size_t m_BeesIncubating = 0;
-   size_t m_UnfedBees = 0;
 
 private:
    void AddBee(BeePtr bee) 
@@ -120,51 +164,5 @@ private:
    { 
       BeePtr bee = std::make_shared<Bee>(Bee(job));
       AddBee(bee);
-   }
-
-   void Forage()
-   {
-
-   }
-   void Nurse()
-   {
-
-   }
-   void House()
-   {
-
-   }
-   void Guard()
-   {
-
-   }
-   void FeedBees()
-   {
-      if (m_Bees.size() > m_Pollen) 
-      { 
-         m_Pollen = 0; 
-         m_UnfedBees = m_Bees.size() - m_Pollen;
-      }
-      else { m_Pollen -= m_Bees.size(); }
-   }
-   void KillBees()
-   {
-      std::random_device rd;
-      std::mt19937 gen(rd());
-
-      while(m_UnfedBees > 0)
-      {
-         std::uniform_int_distribution<> dis(0, m_Bees.size() - 1);
-         int random_index = dis(gen);
-         auto it = std::begin(m_Bees);
-         std::advance(it, random_index);
-         while(it->second->job == BeeJob::QUEEN)
-         {
-            random_index = dis(gen);
-            std::advance(it, random_index);
-         }
-         m_Bees.erase(it);
-         m_UnfedBees--;
-      }
    }
 };
